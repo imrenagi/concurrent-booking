@@ -14,18 +14,19 @@ import (
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
-
-	// "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
 	"github.com/imrenagi/concurrent-booking/api/booking"
+	"github.com/imrenagi/concurrent-booking/api/booking/handler"
+	"github.com/imrenagi/concurrent-booking/api/booking/store"
 	"github.com/imrenagi/concurrent-booking/api/pkg/tracer"
 )
+
+type BookingHandler interface {
+	Booking() http.HandlerFunc
+}
 
 // NewServer ...
 func NewServer() *Server {
@@ -48,6 +49,7 @@ func NewServer() *Server {
 		stopCh: make(chan struct{}),
 		tracerStopFn: closeFn,
 		db:     db,
+		bookingHandler: &handler.Handler{BookingRepository: store.NewShow(db)},
 	}
 
 	srv.routesV1()
@@ -61,6 +63,8 @@ type Server struct {
 	stopCh       chan struct{}
 	tracerStopFn func()
 	db           *gorm.DB
+
+	bookingHandler BookingHandler
 }
 
 // Run ...
@@ -153,21 +157,15 @@ func (s *Server) routesV1() {
 		otelmux.Middleware("booking.com", otelmux.WithTracerProvider(s.Tracer)),
 	)
 
-	meter := global.Meter("demo-server-meter")
-	serverAttribute := attribute.String("server-attribute", "foo")
-	commonLabels := []attribute.KeyValue{serverAttribute}
-	requestCount, _ := meter.SyncInt64().Counter(
-		"demo_server/request_counts",
-		instrument.WithDescription("The number of requests received"),
-	)
+	// meter := global.Meter("demo-server-meter")
+	// serverAttribute := attribute.String("server-attribute", "foo")
+	// commonLabels := []attribute.KeyValue{serverAttribute}
+	// requestCount, _ := meter.SyncInt64().Counter(
+	// 	"demo_server/request_counts",
+	// 	instrument.WithDescription("The number of requests received"),
+	// )
 
-	api.Handle("/testy", otelhttp.NewHandler(http.HandlerFunc(s.healthcheckHandler), "/testy"))
-	api.Handle("/testx", otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, req * http.Request) {
-		requestCount.Add(req.Context(), 1, commonLabels...)
-
-		labeler, _ := otelhttp.LabelerFromContext(req.Context())
-		labeler.Add(attribute.Int("status_code", http.StatusOK))
-	}), "/testx"))
+	api.Handle("/booking", otelhttp.NewHandler(s.bookingHandler.Booking(), "/api/v1/booking"))
 }
 
 func (s *Server) otel(h http.Handler) http.Handler {
@@ -220,6 +218,9 @@ func gormDB(ctx context.Context) (*gorm.DB, error) {
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to set gorm plugin for opentelemetry ")
 	}
+
+	sqlDB, err := db.DB()
+	sqlDB.SetMaxOpenConns(200)
 
 	err = db.AutoMigrate(&booking.Show{})
 	return db, err

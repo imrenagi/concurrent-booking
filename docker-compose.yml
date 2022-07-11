@@ -2,6 +2,7 @@ version: '3.9'
 services:
   postgres:
     image: postgres:13-alpine
+    command: postgres -c 'max_connections=500'
     environment:
       POSTGRES_DB: booking
       POSTGRES_USER: booking

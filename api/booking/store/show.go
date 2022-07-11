@@ -40,7 +40,7 @@ func (c Show) Booking(ctx context.Context, ID uuid.UUID) error {
 
 		log.Debug().Int("remaining_tickets", show.RemainingTickets).Msg("remaining tickets have been decreased")
 
-		return tx.Save(&show).Error
+		return tx.WithContext(ctx).Save(&show).Error
 	})
 }
 
