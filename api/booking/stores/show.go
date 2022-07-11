@@ -1,4 +1,4 @@
-package store
+package stores
 
 import (
 	"context"
@@ -23,6 +23,33 @@ type Show struct {
 }
 
 func (c Show) Booking(ctx context.Context, ID uuid.UUID) error {
+	//
+	// span := trace.SpanFromContext(ctx)
+	// defer span.End()
+	//
+	// r := tc.NewRequest{
+	// 	Requestid: "1",
+	// 	TraceID:   span.SpanContext().TraceID().String(),
+	// 	SpanID:    span.SpanContext().SpanID().String(),
+	// }
+	//
+	// spanCtx, _ := tc.ConstructNewSpanContext(r)
+	//
+	// requestContext := context.Background()
+	// requestContext = trace.ContextWithSpanContext(requestContext, spanCtx)
+	//
+	// // var requestInLoopSpan trace.Span
+	// // childContext, requestInLoopSpan := otel.Tracer("inboundmessage").Start(requestContext, "requestInLoopSpan")
+	//
+	// fn := func(ctx context.Context) {
+	//
+	// 	ctx, span := otel.GetTracerProvider().Tracer("testxxxx").Start(ctx, "hello-span")
+	// 	time.Sleep(1 * time.Second)
+	// 	defer span.End()
+	// }
+	//
+	// fn(requestContext)
+
 	return c.db.Transaction(func(tx *gorm.DB) error {
 		var show *booking.Show
 		err := tx.WithContext(ctx).

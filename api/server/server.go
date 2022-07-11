@@ -21,6 +21,7 @@ import (
 	"github.com/imrenagi/concurrent-booking/api/booking"
 	"github.com/imrenagi/concurrent-booking/api/booking/handler"
 	"github.com/imrenagi/concurrent-booking/api/booking/store"
+	"github.com/imrenagi/concurrent-booking/api/booking/stores"
 	"github.com/imrenagi/concurrent-booking/api/pkg/tracer"
 )
 
@@ -49,7 +50,7 @@ func NewServer() *Server {
 		stopCh: make(chan struct{}),
 		tracerStopFn: closeFn,
 		db:     db,
-		bookingHandler: &handler.Handler{BookingRepository: store.NewShow(db)},
+		bookingHandler: &handler.Handler{BookingRepository: stores.NewShow(db)},
 	}
 
 	srv.routesV1()

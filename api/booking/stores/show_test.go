@@ -1,4 +1,4 @@
-package store_test
+package stores_test
 
 import (
 	"context"
@@ -15,6 +15,8 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/imrenagi/concurrent-booking/api/booking"
+	"github.com/imrenagi/concurrent-booking/api/booking/stores"
+
 	"github.com/imrenagi/concurrent-booking/api/booking/store"
 )
 
@@ -65,7 +67,7 @@ func TestConcurrentBooking(t *testing.T) {
 	db, err := gormFromContainer(ctx, postgresC)
 	assert.NoError(t, err)
 
-	repo := store.NewShow(db)
+	repo := stores.NewShow(db)
 	id := uuid.New()
 	err = repo.Save(context.TODO(), &booking.Show{
 		ID:               id,

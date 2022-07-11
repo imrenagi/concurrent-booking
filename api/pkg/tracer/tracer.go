@@ -2,6 +2,7 @@ package tracer
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -18,8 +19,37 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 )
+
+type NewRequest struct {
+	Requestid    string `json: "requestid"`
+	TraceID      string
+	SpanID       string
+}
+
+func ConstructNewSpanContext(request NewRequest) (spanContext trace.SpanContext, err error) {
+	var traceID trace.TraceID
+	traceID, err = trace.TraceIDFromHex(request.TraceID)
+	if err != nil {
+		fmt.Println("error: ", err)
+		return spanContext, err
+	}
+	var spanID trace.SpanID
+	spanID, err = trace.SpanIDFromHex(request.SpanID)
+	if err != nil {
+		fmt.Println("error: ", err)
+		return spanContext, err
+	}
+	var spanContextConfig trace.SpanContextConfig
+	spanContextConfig.TraceID = traceID
+	spanContextConfig.SpanID = spanID
+	spanContextConfig.TraceFlags = 01
+	spanContextConfig.Remote = false
+	spanContext = trace.NewSpanContext(spanContextConfig)
+	return spanContext, nil
+}
 
 func InitProvider(endpoint string) (*sdktrace.TracerProvider, func()) {
 	ctx := context.Background()
