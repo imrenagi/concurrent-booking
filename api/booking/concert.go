@@ -7,6 +7,6 @@ import (
 
 type Show struct {
 	gorm.Model
-	ID               uuid.UUID `gorm:"type:uuid;not null"`
+	ID               uuid.UUID `gorm:"type:uuid;not null;primaryKey"`
 	RemainingTickets int
 }

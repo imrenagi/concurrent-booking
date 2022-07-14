@@ -1,0 +1,135 @@
+package services
+
+import (
+	"context"
+
+	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
+	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+
+	"github.com/imrenagi/concurrent-booking/api/booking"
+)
+
+var tracer = otel.Tracer("github.com/imrenagi/concurrent-booking/api/booking/services")
+
+type BookingRepository interface {
+	FindOrderByID(ctx context.Context, ID uuid.UUID) (*booking.Order, error)
+	Reserve(ctx context.Context, ID uuid.UUID) error
+	Save(ctx context.Context, order *booking.Order) error
+	Create(ctx context.Context, order *booking.Order) error
+}
+
+type ShowRepository interface {
+	FindConcertByID(ctx context.Context, ID uuid.UUID) (*booking.Show, error)
+}
+
+type Booking struct {
+	BookingRepository BookingRepository
+	ShowRepository    ShowRepository
+	Dispatcher        *asynq.Client
+}
+
+type BookingRequest struct {
+	ShowID uuid.UUID `json:"show_id"`
+}
+
+func (b Booking) Book(ctx context.Context, req BookingRequest) (*booking.Ticket, error) {
+	ctx, parentSpan := tracer.Start(ctx, "booking.BookV1")
+	defer parentSpan.End()
+
+	err := b.BookingRepository.Reserve(ctx, req.ShowID)
+	if err != nil {
+		return nil, err
+	}
+	return &booking.Ticket{}, nil
+}
+
+func (b Booking) BookV2(ctx context.Context, req BookingRequest) (*booking.Order, error) {
+	ctx, parentSpan := tracer.Start(ctx, "booking.BookV2")
+	defer parentSpan.End()
+
+	order := booking.Order{
+		ID:     uuid.New(),
+		ShowID: req.ShowID,
+		Status: booking.Created,
+	}
+
+	err := b.BookingRepository.Create(ctx, &order)
+	if err != nil {
+		return nil, err
+	}
+
+	task, err := NewReservationTask(ctx, order)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = b.Dispatcher.EnqueueContext(ctx, task)
+	if err != nil {
+		return nil, err
+	}
+
+	return &order, nil
+}
+
+type ReservationRequest struct {
+	ShowID  uuid.UUID `json:"show_id"`
+	OrderID uuid.UUID `json:"order_id"`
+}
+
+func (b Booking) Reserve(ctx context.Context, req ReservationRequest) (*booking.Ticket, error) {
+	ctx, parentSpan := tracer.Start(ctx, "booking.Reserve")
+	defer parentSpan.End()
+	err := b.BookingRepository.Reserve(ctx, req.ShowID)
+	if err != nil && err != booking.ErrTicketIsNotAvailable {
+		return nil, err
+	}
+
+	if err == booking.ErrTicketIsNotAvailable {
+		log.Debug().Msgf("order is rejected")
+		err = b.setOrderToRejected(ctx, req.OrderID)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err = b.setOrderToReserved(ctx, req.OrderID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &booking.Ticket{}, nil
+}
+
+func (b Booking) setOrderToReserved(ctx context.Context, id uuid.UUID) error {
+	ctx, parentSpan := tracer.Start(ctx, "booking.setOrderToReserved")
+	defer parentSpan.End()
+	order, err := b.BookingRepository.FindOrderByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	order.Status = booking.Reserved
+
+	err = b.BookingRepository.Save(ctx, order)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b Booking) setOrderToRejected(ctx context.Context, id uuid.UUID) error {
+	ctx, parentSpan := tracer.Start(ctx, "booking.setOrderToRejected")
+	defer parentSpan.End()
+	order, err := b.BookingRepository.FindOrderByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	order.Status = booking.Rejected
+
+	err = b.BookingRepository.Save(ctx, order)
+	if err != nil {
+		return err
+	}
+	return nil
+}

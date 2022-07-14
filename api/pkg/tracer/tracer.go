@@ -51,7 +51,7 @@ func ConstructNewSpanContext(request NewRequest) (spanContext trace.SpanContext,
 	return spanContext, nil
 }
 
-func InitProvider(endpoint string) (*sdktrace.TracerProvider, func()) {
+func InitProvider(name, endpoint string) (*sdktrace.TracerProvider, func()) {
 	ctx := context.Background()
 
 	metricClient := otlpmetricgrpc.NewClient(
@@ -87,7 +87,7 @@ func InitProvider(endpoint string) (*sdktrace.TracerProvider, func()) {
 		resource.WithHost(),
 		resource.WithAttributes(
 			// the service name used to display traces in backends
-			semconv.ServiceNameKey.String("booking-service"),
+			semconv.ServiceNameKey.String(name),
 		),
 	)
 	handleErr(err, "failed to create resource")

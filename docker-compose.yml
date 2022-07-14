@@ -14,13 +14,13 @@ services:
     restart: always
     volumes:
       - postgres:/var/lib/postgresql/data/
-#  redis:
-#    image: redis:6
-#    expose:
-#      - "6379"
-#    ports:
-#      - "6379:6379"
-#    restart: always
+  redis:
+    image: redis:6
+    expose:
+      - "6379"
+    ports:
+      - "6379:6379"
+    restart: always
   jaeger:
     image: jaegertracing/all-in-one:1.27
     environment:
@@ -70,6 +70,11 @@ services:
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
+  asynqmon:
+    image: hibiken/asynqmon
+    command: ["--redis-addr=redis:6379"]
+    ports:
+      - 8011:8080
 
 volumes:
   postgres:

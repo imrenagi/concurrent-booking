@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/hibiken/asynq"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
 	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
@@ -20,13 +21,14 @@ import (
 
 	"github.com/imrenagi/concurrent-booking/api/booking"
 	"github.com/imrenagi/concurrent-booking/api/booking/handler"
-	"github.com/imrenagi/concurrent-booking/api/booking/store"
+	"github.com/imrenagi/concurrent-booking/api/booking/services"
 	"github.com/imrenagi/concurrent-booking/api/booking/stores"
 	"github.com/imrenagi/concurrent-booking/api/pkg/tracer"
 )
 
 type BookingHandler interface {
 	Booking() http.HandlerFunc
+	BookingV2() http.HandlerFunc
 }
 
 // NewServer ...
@@ -42,15 +44,21 @@ func NewServer() *Server {
 	if !ok {
 		otelAgentAddr = "0.0.0.0:4317"
 	}
-	provider, closeFn := tracer.InitProvider(otelAgentAddr)
+	provider, closeFn := tracer.InitProvider("booking-service", otelAgentAddr)
+
+	bookingService := services.Booking{
+		BookingRepository: stores.NewOrder(db),
+		ShowRepository: stores.NewShow(db),
+		Dispatcher: asynq.NewClient(asynq.RedisClientOpt{Addr: "127.0.0.1:6379"}),
+	}
 
 	srv := &Server{
-		Tracer: provider,
-		Router: mux.NewRouter(),
-		stopCh: make(chan struct{}),
-		tracerStopFn: closeFn,
-		db:     db,
-		bookingHandler: &handler.Handler{BookingRepository: stores.NewShow(db)},
+		Tracer:         provider,
+		Router:         mux.NewRouter(),
+		stopCh:         make(chan struct{}),
+		tracerStopFn:   closeFn,
+		db:             db,
+		bookingHandler: &handler.Handler{Service: bookingService},
 	}
 
 	srv.routesV1()
@@ -157,16 +165,13 @@ func (s *Server) routesV1() {
 		// otelmux this is specific for otlp tracer
 		otelmux.Middleware("booking.com", otelmux.WithTracerProvider(s.Tracer)),
 	)
-
-	// meter := global.Meter("demo-server-meter")
-	// serverAttribute := attribute.String("server-attribute", "foo")
-	// commonLabels := []attribute.KeyValue{serverAttribute}
-	// requestCount, _ := meter.SyncInt64().Counter(
-	// 	"demo_server/request_counts",
-	// 	instrument.WithDescription("The number of requests received"),
-	// )
-
 	api.Handle("/booking", otelhttp.NewHandler(s.bookingHandler.Booking(), "/api/v1/booking"))
+
+	apiV2 := s.Router.PathPrefix("/api/v2/").Subrouter()
+	apiV2.Use(
+		otelmux.Middleware("booking.com", otelmux.WithTracerProvider(s.Tracer)),
+	)
+	apiV2.Handle("/booking", otelhttp.NewHandler(s.bookingHandler.BookingV2(), "/api/v2/booking"))
 }
 
 func (s *Server) otel(h http.Handler) http.Handler {
@@ -223,6 +228,6 @@ func gormDB(ctx context.Context) (*gorm.DB, error) {
 	sqlDB, err := db.DB()
 	sqlDB.SetMaxOpenConns(200)
 
-	err = db.AutoMigrate(&booking.Show{})
+	err = db.AutoMigrate(&booking.Show{}, &booking.Order{})
 	return db, err
 }

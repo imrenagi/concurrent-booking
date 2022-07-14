@@ -16,8 +16,6 @@ import (
 
 	"github.com/imrenagi/concurrent-booking/api/booking"
 	"github.com/imrenagi/concurrent-booking/api/booking/stores"
-
-	"github.com/imrenagi/concurrent-booking/api/booking/store"
 )
 
 func postgresC() (testcontainers.Container, error) {
@@ -77,9 +75,11 @@ func TestConcurrentBooking(t *testing.T) {
 
 	ticketResultChan := make(chan booking.Ticket, 10)
 
+	orderRepo := stores.NewOrder(db)
+
 	for i := 0; i < 10; i++ {
 		go func(i int) {
-			err := repo.Booking(context.TODO(), id)
+			err := orderRepo.Reserve(context.TODO(), id)
 			if err != nil {
 				log.Fatal().Msg("error")
 			}
