@@ -7,24 +7,21 @@ import (
 	"os"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/hibiken/asynq"
 	"github.com/rs/cors"
 	"github.com/rs/zerolog/log"
-	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"github.com/imrenagi/concurrent-booking/api/booking"
 	"github.com/imrenagi/concurrent-booking/api/booking/handler"
 	"github.com/imrenagi/concurrent-booking/api/booking/services"
 	"github.com/imrenagi/concurrent-booking/api/booking/stores"
-	"github.com/imrenagi/concurrent-booking/api/pkg/tracer"
+	tmetric "github.com/imrenagi/concurrent-booking/api/internal/telemetry/metric"
+	ttrace "github.com/imrenagi/concurrent-booking/api/internal/telemetry/trace"
+	"github.com/imrenagi/concurrent-booking/api/server/middleware"
 )
+
+var name = "booking-service"
 
 type BookingHandler interface {
 	Booking() http.HandlerFunc
@@ -34,44 +31,42 @@ type BookingHandler interface {
 // NewServer ...
 func NewServer() *Server {
 
-	ctx := context.Background()
-	db, err := gormDB(ctx)
-	if err != nil {
-		log.Fatal().Err(err).Msg("unable to start db")
-	}
+	db := db()
 
 	otelAgentAddr, ok := os.LookupEnv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	if !ok {
-		otelAgentAddr = "0.0.0.0:4317"
+		log.Fatal().Msg("OTEL_EXPORTER_OTLP_ENDPOINT is not set")
 	}
-	provider, closeFn := tracer.InitProvider("booking-service", otelAgentAddr)
+
+	asynqRedisHost, ok := os.LookupEnv("ASYNQ_REDIS_HOST")
+	if !ok {
+		log.Fatal().Msg("ASYNC_REDIS_HOST is not set")
+	}
 
 	bookingService := services.Booking{
 		BookingRepository: stores.NewOrder(db),
-		ShowRepository: stores.NewShow(db),
-		Dispatcher: asynq.NewClient(asynq.RedisClientOpt{Addr: "127.0.0.1:6379"}),
+		ShowRepository:    stores.NewShow(db),
+		Dispatcher:        asynq.NewClient(asynq.RedisClientOpt{Addr: asynqRedisHost}),
 	}
 
 	srv := &Server{
-		Tracer:         provider,
 		Router:         mux.NewRouter(),
-		stopCh:         make(chan struct{}),
-		tracerStopFn:   closeFn,
 		db:             db,
 		bookingHandler: &handler.Handler{Service: bookingService},
 	}
 
-	srv.routesV1()
+	srv.InitGlobalProvider(name, otelAgentAddr)
+	srv.routes()
 
 	return srv
 }
 
 type Server struct {
-	Tracer       *sdktrace.TracerProvider
-	Router       *mux.Router
-	stopCh       chan struct{}
-	tracerStopFn func()
-	db           *gorm.DB
+	Router *mux.Router
+	db     *gorm.DB
+
+	metricProviderCloseFn []tmetric.CloseFunc
+	traceProviderCloseFn  []ttrace.CloseFunc
 
 	bookingHandler BookingHandler
 }
@@ -81,10 +76,10 @@ func (s *Server) Run(ctx context.Context, port int) error {
 
 	httpS := http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
-		Handler: s.cors().Handler(s.requestID(s.Router)),
+		Handler: s.cors().Handler(middleware.RequestID(s.Router)),
 	}
 
-	log.Info().Msgf("gopay-sh serving on port %d ", port)
+	log.Info().Msgf("server serving on port %d ", port)
 
 	go func() {
 		if err := httpS.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -96,7 +91,7 @@ func (s *Server) Run(ctx context.Context, port int) error {
 
 	log.Printf("server stopped")
 
-	ctxShutDown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctxShutDown, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer func() {
 		cancel()
 	}()
@@ -121,24 +116,24 @@ func (s *Server) Run(ctx context.Context, port int) error {
 		log.Fatal().Msgf("unable close db connection")
 	}
 
-	s.tracerStopFn()
+	for _, closeFn := range s.metricProviderCloseFn {
+		go func() {
+			err = closeFn(ctxShutDown)
+			if err != nil {
+				log.Error().Err(err).Msgf("Unable to close metric provider")
+			}
+		}()
+	}
+	for _, closeFn := range s.traceProviderCloseFn {
+		go func() {
+			err = closeFn(ctxShutDown)
+			if err != nil {
+				log.Error().Err(err).Msgf("Unable to close trace provider")
+			}
+		}()
+	}
 
 	return err
-
-}
-
-// checkServeErr checks the error from a .Serve() call to decide if it was a graceful shutdown
-func (s *Server) checkServeErr(name string, err error) {
-	if err != nil {
-		if s.stopCh == nil {
-			// a nil stopCh indicates a graceful shutdown
-			log.Info().Msgf("graceful shutdown %s: %v", name, err)
-		} else {
-			log.Fatal().Msgf("%s: %v", name, err)
-		}
-	} else {
-		log.Info().Msgf("graceful shutdown %s", name)
-	}
 }
 
 func (s *Server) cors() *cors.Cors {
@@ -151,83 +146,4 @@ func (s *Server) cors() *cors.Cors {
 		OptionsPassthrough: false,
 		Debug:              false,
 	})
-}
-
-func (s *Server) routesV1() {
-	// healthcheck
-	s.Router.HandleFunc("/", s.healthcheckHandler)
-	s.Router.HandleFunc("/healthz", s.healthcheckHandler)
-	s.Router.HandleFunc("/readyz", s.readinessHandler)
-
-	// serve api
-	api := s.Router.PathPrefix("/api/v1/").Subrouter()
-	api.Use(
-		// otelmux this is specific for otlp tracer
-		otelmux.Middleware("booking.com", otelmux.WithTracerProvider(s.Tracer)),
-	)
-	api.Handle("/booking", otelhttp.NewHandler(s.bookingHandler.Booking(), "/api/v1/booking"))
-
-	apiV2 := s.Router.PathPrefix("/api/v2/").Subrouter()
-	apiV2.Use(
-		otelmux.Middleware("booking.com", otelmux.WithTracerProvider(s.Tracer)),
-	)
-	apiV2.Handle("/booking", otelhttp.NewHandler(s.bookingHandler.BookingV2(), "/api/v2/booking"))
-}
-
-func (s *Server) otel(h http.Handler) http.Handler {
-	return otelhttp.NewHandler(h, "/ssss")
-}
-
-func (s *Server) requestID(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Request-Id") == "" {
-			r.Header.Set("X-Request-Id", uuid.New().String())
-		}
-
-		log := log.With().
-			Str("request_id", r.Header.Get("X-Request-Id")).
-			Logger()
-
-		ctx := log.WithContext(r.Context())
-		h.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-func (s *Server) hc() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("im alive"))
-	}
-}
-
-func (s *Server) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("im alive"))
-}
-
-func (s *Server) readinessHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("im ready to face the world"))
-}
-
-func gormDB(ctx context.Context) (*gorm.DB, error) {
-	dsn := fmt.Sprintf("host=%s port=%s user=%s DB.name=%s password=%s sslmode=disable",
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_NAME"),
-		os.Getenv("DB_PASSWORD"))
-
-	db, err := gorm.Open(postgres.New(postgres.Config{DSN: dsn}), &gorm.Config{})
-	if err != nil {
-		log.Fatal().Err(err).Msg("unable to open db connection")
-	}
-
-	err = db.Use(otelgorm.NewPlugin(otelgorm.WithDBName(os.Getenv("DB_NAME"))))
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to set gorm plugin for opentelemetry ")
-	}
-
-	sqlDB, err := db.DB()
-	sqlDB.SetMaxOpenConns(200)
-
-	err = db.AutoMigrate(&booking.Show{}, &booking.Order{})
-	return db, err
 }

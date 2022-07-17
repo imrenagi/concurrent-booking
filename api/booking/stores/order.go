@@ -31,11 +31,11 @@ func (o Order) FindOrderByID(ctx context.Context, ID uuid.UUID) (*booking.Order,
 }
 
 func (o Order) Save(ctx context.Context, order *booking.Order) error {
-	return  o.db.WithContext(ctx).Save(&order).Error
+	return o.db.WithContext(ctx).Save(&order).Error
 }
 
 func (o Order) Create(ctx context.Context, order *booking.Order) error {
-	return  o.db.WithContext(ctx).Create(&order).Error
+	return o.db.WithContext(ctx).Create(&order).Error
 }
 
 func (o Order) Reserve(ctx context.Context, showID uuid.UUID) error {

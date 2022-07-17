@@ -65,7 +65,7 @@ func (b Booking) BookV2(ctx context.Context, req BookingRequest) (*booking.Order
 		return nil, err
 	}
 
-	_, err = b.Dispatcher.EnqueueContext(ctx, task)
+	_, err = b.Dispatcher.EnqueueContext(ctx, task, asynq.Queue("critical"))
 	if err != nil {
 		return nil, err
 	}
