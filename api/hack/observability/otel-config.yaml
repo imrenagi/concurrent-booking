@@ -15,6 +15,11 @@ exporters:
     tls:
       insecure: true
 
+  otlp:
+    endpoint: ${OTEL_NEW_RELIC_EXPORTER_OTLP_ENDPOINT}
+    headers:
+      api-key: ${OTEL_NEW_RELIC_EXPORTER_API_KEY}
+
 processors:
   batch:
 
@@ -31,8 +36,14 @@ service:
     traces:
       receivers: [ otlp ]
       processors: [ batch ]
-      exporters: [ logging, jaeger ]
+      exporters:
+        - logging
+        - jaeger
+#        - otlp
     metrics:
       receivers: [ otlp ]
       processors: [ batch ]
-      exporters: [ logging, prometheus ]
+      exporters:
+        - logging
+        - prometheus
+#        - otlp

@@ -39,7 +39,6 @@ services:
     restart: always
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
-    environment: {}
     expose:
       - "4317"
     ports:
@@ -53,6 +52,9 @@ services:
       - "${PWD}/api/hack/observability:/observability"
     command: ["--config=/observability/otel-config.yaml", "${OTELCOL_ARGS}"]
     restart: always
+    environment:
+      - OTEL_NEW_RELIC_EXPORTER_OTLP_ENDPOINT=${OTEL_NEW_RELIC_EXPORTER_OTLP_ENDPOINT}
+      - OTEL_NEW_RELIC_EXPORTER_API_KEY=${OTEL_NEW_RELIC_EXPORTER_API_KEY}
     depends_on:
       - jaeger
   grafana:

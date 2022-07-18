@@ -33,9 +33,9 @@ func NewServer() *Server {
 
 	db := db()
 
-	otelAgentAddr, ok := os.LookupEnv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	otelAgentAddr, ok := os.LookupEnv("OTEL_RECEIVER_OTLP_ENDPOINT")
 	if !ok {
-		log.Fatal().Msg("OTEL_EXPORTER_OTLP_ENDPOINT is not set")
+		log.Fatal().Msg("OTEL_RECEIVER_OTLP_ENDPOINT is not set")
 	}
 
 	asynqRedisHost, ok := os.LookupEnv("ASYNQ_REDIS_HOST")

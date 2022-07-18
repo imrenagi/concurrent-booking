@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 
+	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
@@ -20,16 +21,17 @@ func (s *Server) routes() {
 	// serve api
 	api := s.Router.PathPrefix("/api/v1/").Subrouter()
 	api.Use(
-		// otelmux this is specific for otlp tracer
 		otelmux.Middleware(name),
 	)
-	api.Handle("/booking", otelhttp.NewHandler(s.bookingHandler.Booking(), "/api/v1/booking"))
+	api.Handle("/booking", otelhttp.WithRouteTag("/api/v1/booking",
+		otelhttp.NewHandler(s.bookingHandler.Booking(), name, otelhttp.WithHTTPRouteTag("/api/v1/booking"))))
 
 	apiV2 := s.Router.PathPrefix("/api/v2/").Subrouter()
 	apiV2.Use(
 		otelmux.Middleware(name),
 	)
-	apiV2.Handle("/booking", otelhttp.NewHandler(s.bookingHandler.BookingV2(), "/api/v2/booking"))
+	apiV2.Handle("/booking", otelhttp.WithRouteTag("/api/v2/booking",
+		otelhttp.NewHandler(s.bookingHandler.BookingV2(), name, otelhttp.WithHTTPRouteTag("/api/v2/booking"))))
 }
 
 var meter = global.Meter("ex.com/basic")
@@ -48,5 +50,6 @@ func (s *Server) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) readinessHandler(w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msg("test")
 	w.Write([]byte("im ready to face the world"))
 }

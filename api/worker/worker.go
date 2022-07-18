@@ -24,9 +24,9 @@ func NewWorker() *Worker {
 		log.Fatal().Msg("ASYNC_REDIS_HOST is not set")
 	}
 
-	otelAgentAddr, ok := os.LookupEnv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	otelAgentAddr, ok := os.LookupEnv("OTEL_RECEIVER_OTLP_ENDPOINT")
 	if !ok {
-		log.Fatal().Msg("OTEL_EXPORTER_OTLP_ENDPOINT is not set")
+		log.Fatal().Msg("OTEL_RECEIVER_OTLP_ENDPOINT is not set")
 	}
 
 	srv := asynq.NewServer(

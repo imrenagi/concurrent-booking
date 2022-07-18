@@ -37,6 +37,8 @@ func (h Handler) Booking() http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -60,6 +62,7 @@ func (h Handler) BookingV2() http.HandlerFunc {
 
 		b, _ := json.Marshal(order)
 		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 		w.Write(b)
 	}
 }
