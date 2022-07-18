@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"github.com/imrenagi/concurrent-booking/api/booking"
+	"github.com/imrenagi/concurrent-booking/booking"
 )
 
 func NewOrder(db *gorm.DB) *Order {

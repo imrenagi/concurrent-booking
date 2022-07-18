@@ -1,4 +1,4 @@
-module github.com/imrenagi/concurrent-booking/api
+module github.com/imrenagi/concurrent-booking
 
 go 1.18
 

@@ -7,8 +7,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/imrenagi/concurrent-booking/api/booking"
-	"github.com/imrenagi/concurrent-booking/api/booking/services"
+	"github.com/imrenagi/concurrent-booking/booking"
+	"github.com/imrenagi/concurrent-booking/booking/services"
 )
 
 type BookingService interface {

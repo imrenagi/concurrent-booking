@@ -9,7 +9,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/imrenagi/concurrent-booking/api/worker"
+	"github.com/imrenagi/concurrent-booking/worker"
 )
 
 func main() {

@@ -9,13 +9,13 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
 
-	tmetric "github.com/imrenagi/concurrent-booking/api/internal/telemetry/metric"
-	ttrace "github.com/imrenagi/concurrent-booking/api/internal/telemetry/trace"
-	"github.com/imrenagi/concurrent-booking/api/worker/middleware"
+	tmetric "github.com/imrenagi/concurrent-booking/internal/telemetry/metric"
+	ttrace "github.com/imrenagi/concurrent-booking/internal/telemetry/trace"
+	"github.com/imrenagi/concurrent-booking/worker/middleware"
 )
 
 var name = "reservation-worker"
-var trc = otel.Tracer("github.com/imrenagi/concurrent-booking/api/cmd/worker")
+var trc = otel.Tracer("github.com/imrenagi/concurrent-booking/cmd/worker")
 
 func NewWorker() *Worker {
 
@@ -84,8 +84,12 @@ func (w *Worker) Run(ctx context.Context) error {
 		cancel()
 	}()
 
+	log.Debug().Msg("stopping worker")
+
 	w.server.Stop()
 	w.server.Shutdown()
+
+	log.Debug().Msg("worker has been stopped")
 
 	for _, closeFn := range w.metricProviderCloseFn {
 		go func() {

@@ -1,4 +1,4 @@
-package worker
+package server
 
 import (
 	"github.com/rs/zerolog/log"
@@ -6,13 +6,13 @@ import (
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
 
-	"github.com/imrenagi/concurrent-booking/api/internal/telemetry/metric"
-	metricExporter "github.com/imrenagi/concurrent-booking/api/internal/telemetry/metric/exporter"
-	ttrace "github.com/imrenagi/concurrent-booking/api/internal/telemetry/trace"
-	traceExporter "github.com/imrenagi/concurrent-booking/api/internal/telemetry/trace/exporter"
+	"github.com/imrenagi/concurrent-booking/internal/telemetry/metric"
+	metricExporter "github.com/imrenagi/concurrent-booking/internal/telemetry/metric/exporter"
+	ttrace "github.com/imrenagi/concurrent-booking/internal/telemetry/trace"
+	traceExporter "github.com/imrenagi/concurrent-booking/internal/telemetry/trace/exporter"
 )
 
-func (w *Worker) InitGlobalProvider(name, endpoint string) {
+func (s *Server) InitGlobalProvider(name, endpoint string) {
 	metricExp := metricExporter.NewOTLP(endpoint)
 	pusher, pusherCloseFn, err := metric.NewMeterProviderBuilder().
 		SetExporter(metricExp).
@@ -21,7 +21,7 @@ func (w *Worker) InitGlobalProvider(name, endpoint string) {
 	if err != nil {
 		log.Fatal().Err(err).Msgf("failed initializing the meter provider")
 	}
-	w.metricProviderCloseFn = append(w.metricProviderCloseFn, pusherCloseFn)
+	s.metricProviderCloseFn = append(s.metricProviderCloseFn, pusherCloseFn)
 	global.SetMeterProvider(pusher)
 
 	spanExporter := traceExporter.NewOTLP(endpoint)
@@ -31,7 +31,7 @@ func (w *Worker) InitGlobalProvider(name, endpoint string) {
 	if err != nil {
 		log.Fatal().Err(err).Msgf("failed initializing the tracer provider")
 	}
-	w.traceProviderCloseFn = append(w.traceProviderCloseFn, tracerProviderCloseFn)
+	s.traceProviderCloseFn = append(s.traceProviderCloseFn, tracerProviderCloseFn)
 
 	// set global propagator to tracecontext (the default is no-op).
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))

@@ -13,12 +13,12 @@ import (
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 
-	"github.com/imrenagi/concurrent-booking/api/booking/handler"
-	"github.com/imrenagi/concurrent-booking/api/booking/services"
-	"github.com/imrenagi/concurrent-booking/api/booking/stores"
-	tmetric "github.com/imrenagi/concurrent-booking/api/internal/telemetry/metric"
-	ttrace "github.com/imrenagi/concurrent-booking/api/internal/telemetry/trace"
-	"github.com/imrenagi/concurrent-booking/api/server/middleware"
+	"github.com/imrenagi/concurrent-booking/booking/handler"
+	"github.com/imrenagi/concurrent-booking/booking/services"
+	"github.com/imrenagi/concurrent-booking/booking/stores"
+	tmetric "github.com/imrenagi/concurrent-booking/internal/telemetry/metric"
+	ttrace "github.com/imrenagi/concurrent-booking/internal/telemetry/trace"
+	"github.com/imrenagi/concurrent-booking/server/middleware"
 )
 
 var name = "booking-service"

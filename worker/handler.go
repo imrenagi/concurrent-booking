@@ -7,10 +7,10 @@ import (
 
 	"github.com/hibiken/asynq"
 
-	"github.com/imrenagi/concurrent-booking/api/booking"
-	"github.com/imrenagi/concurrent-booking/api/booking/services"
-	"github.com/imrenagi/concurrent-booking/api/booking/stores"
-	gormpg "github.com/imrenagi/concurrent-booking/api/internal/store/gorm/postgres"
+	"github.com/imrenagi/concurrent-booking/booking"
+	"github.com/imrenagi/concurrent-booking/booking/services"
+	"github.com/imrenagi/concurrent-booking/booking/stores"
+	gormpg "github.com/imrenagi/concurrent-booking/internal/store/gorm/postgres"
 )
 
 type bookingService interface {

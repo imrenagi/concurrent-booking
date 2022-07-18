@@ -8,10 +8,10 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
 
-	"github.com/imrenagi/concurrent-booking/api/booking"
+	"github.com/imrenagi/concurrent-booking/booking"
 )
 
-var tracer = otel.Tracer("github.com/imrenagi/concurrent-booking/api/booking/services")
+var tracer = otel.Tracer("github.com/imrenagi/concurrent-booking/booking/services")
 
 type BookingRepository interface {
 	FindOrderByID(ctx context.Context, ID uuid.UUID) (*booking.Order, error)

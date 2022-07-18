@@ -8,7 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/imrenagi/concurrent-booking/api/server"
+	"github.com/imrenagi/concurrent-booking/server"
 )
 
 func main() {

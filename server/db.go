@@ -6,8 +6,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 
-	"github.com/imrenagi/concurrent-booking/api/booking"
-	gormpg "github.com/imrenagi/concurrent-booking/api/internal/store/gorm/postgres"
+	"github.com/imrenagi/concurrent-booking/booking"
+	gormpg "github.com/imrenagi/concurrent-booking/internal/store/gorm/postgres"
 )
 
 func db() *gorm.DB {

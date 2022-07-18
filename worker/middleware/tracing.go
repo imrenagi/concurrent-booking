@@ -7,8 +7,8 @@ import (
 	"github.com/hibiken/asynq"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/imrenagi/concurrent-booking/api/booking/services"
-	"github.com/imrenagi/concurrent-booking/api/internal/telemetry"
+	"github.com/imrenagi/concurrent-booking/booking/services"
+	"github.com/imrenagi/concurrent-booking/internal/telemetry"
 )
 
 func SpanPropagator(next asynq.Handler) asynq.Handler {

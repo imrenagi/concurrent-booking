@@ -7,7 +7,7 @@ import (
 	"github.com/hibiken/asynq"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/imrenagi/concurrent-booking/api/booking"
+	"github.com/imrenagi/concurrent-booking/booking"
 )
 
 // A list of task types.

@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"github.com/imrenagi/concurrent-booking/api/booking"
+	"github.com/imrenagi/concurrent-booking/booking"
 )
 
 func NewShow(db *gorm.DB) *Show {

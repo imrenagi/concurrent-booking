@@ -14,8 +14,8 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"github.com/imrenagi/concurrent-booking/api/booking"
-	"github.com/imrenagi/concurrent-booking/api/booking/stores"
+	"github.com/imrenagi/concurrent-booking/booking"
+	"github.com/imrenagi/concurrent-booking/booking/stores"
 )
 
 func postgresC() (testcontainers.Container, error) {
