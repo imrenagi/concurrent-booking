@@ -88,4 +88,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.33.0 => /Users/imre.nagi/Documents/personal/opentelemetry-go-contrib/instrumentation/net/http/otelhttp
+replace go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.33.0 => github.com/imrenagi/opentelemetry-go-contrib/instrumentation/net/http/otelhttp v0.33.1-0.20220718014305-990bd3eb8544
