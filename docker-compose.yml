@@ -63,7 +63,7 @@ services:
       - 3000:3000
     volumes:
       - ./hack/observability/grafana/provisioning:/etc/grafana/provisioning
-#      - ./hack/observability/grafana/dashboards:/etc/grafana/demo-dashboards
+      - ./hack/observability/grafana/dashboards:/etc/grafana/demo-dashboards
       - grafana_data:/var/lib/grafana
   prometheus:
     image: prom/prometheus:latest
