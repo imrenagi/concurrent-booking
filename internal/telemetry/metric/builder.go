@@ -50,7 +50,7 @@ func (b meterProviderBuilder) Build() (metric.MeterProvider, CloseFunc, error) {
 			b.exporter,
 		),
 		controller.WithExporter(b.exporter),
-		controller.WithCollectPeriod(5*time.Second),
+		controller.WithCollectPeriod(2*time.Second),
 	)
 
 	if err := pusher.Start(context.Background()); err != nil {

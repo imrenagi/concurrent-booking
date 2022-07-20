@@ -74,7 +74,10 @@ services:
       - "9090:9090"
   asynqmon:
     image: hibiken/asynqmon
-    command: ["--redis-addr=redis:6379"]
+    command:
+      - "--redis-addr=redis:6379"
+      - "--enable-metrics-exporter"
+      - "--prometheus-addr=http://prometheus:9090"
     ports:
       - 8011:8080
 

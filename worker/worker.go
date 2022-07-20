@@ -32,7 +32,7 @@ func NewWorker() *Worker {
 	srv := asynq.NewServer(
 		asynq.RedisClientOpt{Addr: asynqRedisHost},
 		asynq.Config{
-			Concurrency: 100,
+			Concurrency: 5,
 			Queues: map[string]int{
 				"critical": 6,
 				"default":  3,
