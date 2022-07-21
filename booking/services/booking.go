@@ -6,14 +6,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/imrenagi/concurrent-booking/booking"
 )
-
-var tracer = otel.Tracer("github.com/imrenagi/concurrent-booking/booking/services")
 
 type BookingRepository interface {
 	FindOrderByID(ctx context.Context, ID uuid.UUID) (*booking.Order, error)
@@ -44,6 +41,12 @@ func (b Booking) Book(ctx context.Context, req BookingRequest) (*booking.Ticket,
 	if err != nil {
 		return nil, err
 	}
+
+	attrs := []attribute.KeyValue{
+		orderStatusKey.String(string(booking.Reserved)),
+	}
+	orderCounter.Add(ctx, 1, attrs...)
+
 	return &booking.Ticket{}, nil
 }
 
@@ -77,7 +80,13 @@ func (b Booking) BookV2(ctx context.Context, req BookingRequest) (*booking.Order
 		parentSpan.RecordError(err)
 		return nil, err
 	}
+
 	parentSpan.AddEvent("task is created", trace.WithAttributes(attribute.String("task_info_id", taskInfo.ID)))
+
+	attrs := []attribute.KeyValue{
+		orderStatusKey.String(string(order.Status)),
+	}
+	orderCounter.Add(ctx, 1, attrs...)
 
 	return &order, nil
 }
@@ -124,6 +133,12 @@ func (b Booking) setOrderToReserved(ctx context.Context, id uuid.UUID) error {
 	if err != nil {
 		return err
 	}
+
+	attrs := []attribute.KeyValue{
+		orderStatusKey.String(string(booking.Reserved)),
+	}
+	orderCounter.Add(ctx, 1, attrs...)
+
 	return nil
 }
 
@@ -140,5 +155,11 @@ func (b Booking) setOrderToRejected(ctx context.Context, id uuid.UUID) error {
 	if err != nil {
 		return err
 	}
+
+	attrs := []attribute.KeyValue{
+		orderStatusKey.String(string(booking.Reserved)),
+	}
+	orderCounter.Add(ctx, 1, attrs...)
+
 	return nil
 }
