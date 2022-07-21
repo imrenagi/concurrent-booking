@@ -50,11 +50,13 @@ services:
       - "55679:55679" # zpages extension
     volumes:
       - "${PWD}/hack/observability:/observability"
+      - ./hack/observability/secrets/otel-collector.json:/etc/otel/key.json
     command: ["--config=/observability/otel-config.yaml", "${OTELCOL_ARGS}"]
     restart: always
     environment:
       - OTEL_NEW_RELIC_EXPORTER_OTLP_ENDPOINT=${OTEL_NEW_RELIC_EXPORTER_OTLP_ENDPOINT}
       - OTEL_NEW_RELIC_EXPORTER_API_KEY=${OTEL_NEW_RELIC_EXPORTER_API_KEY}
+      - GOOGLE_APPLICATION_CREDENTIALS=/etc/otel/key.json
     depends_on:
       - jaeger
   grafana:

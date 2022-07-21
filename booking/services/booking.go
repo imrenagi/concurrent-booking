@@ -7,6 +7,8 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/imrenagi/concurrent-booking/booking"
 )
@@ -49,6 +51,7 @@ func (b Booking) BookV2(ctx context.Context, req BookingRequest) (*booking.Order
 	ctx, parentSpan := tracer.Start(ctx, "booking.BookV2")
 	defer parentSpan.End()
 
+	parentSpan.AddEvent("creating new order id")
 	order := booking.Order{
 		ID:     uuid.New(),
 		ShowID: req.ShowID,
@@ -57,18 +60,24 @@ func (b Booking) BookV2(ctx context.Context, req BookingRequest) (*booking.Order
 
 	err := b.BookingRepository.Create(ctx, &order)
 	if err != nil {
+		parentSpan.RecordError(err)
 		return nil, err
 	}
 
+	parentSpan.AddEvent("creating asynq task")
 	task, err := NewReservationTask(ctx, order)
 	if err != nil {
+		parentSpan.RecordError(err)
 		return nil, err
 	}
 
-	_, err = b.Dispatcher.EnqueueContext(ctx, task, asynq.Queue("critical"))
+	parentSpan.AddEvent("Adding task to queue")
+	taskInfo, err := b.Dispatcher.EnqueueContext(ctx, task, asynq.Queue("critical"))
 	if err != nil {
+		parentSpan.RecordError(err)
 		return nil, err
 	}
+	parentSpan.AddEvent("task is created", trace.WithAttributes(attribute.String("task_info_id", taskInfo.ID)))
 
 	return &order, nil
 }

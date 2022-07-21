@@ -3,3 +3,4 @@
 .DS_STORE
 
 api/.idea/
+hack/observability/secrets/*

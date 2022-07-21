@@ -4,6 +4,15 @@ receivers:
       grpc:
 
 exporters:
+  googlecloud:
+    project: io-extended-2022
+    retry_on_failure:
+      enabled: false
+#    metric:
+#      create_metric_descriptor_buffer_size: 20
+#    log:
+#      default_log_name: opentelemetry.io/collector-exported-log
+
   prometheus:
     endpoint: "0.0.0.0:8889"
     const_labels: { }
@@ -22,6 +31,13 @@ exporters:
 
 processors:
   batch:
+  memory_limiter:
+    check_interval: 5s
+    limit_percentage: 65
+    spike_limit_percentage: 60
+  resourcedetection:
+    detectors: [gcp]
+    timeout: 10s
 
 extensions:
   health_check:
@@ -35,15 +51,21 @@ service:
   pipelines:
     traces:
       receivers: [ otlp ]
-      processors: [ batch ]
+      processors:
+        - memory_limiter
+        - batch
       exporters:
-        - logging
+#        - logging
         - jaeger
+        - googlecloud
 #        - otlp
     metrics:
       receivers: [ otlp ]
-      processors: [ batch ]
+      processors:
+        - memory_limiter
+        - batch
       exporters:
-        - logging
+#        - logging
         - prometheus
+        - googlecloud
 #        - otlp
