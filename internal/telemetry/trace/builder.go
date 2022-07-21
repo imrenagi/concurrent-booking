@@ -31,7 +31,7 @@ func (b *traceProviderBuilder) Build() (*trace.TracerProvider, CloseFunc, error)
 	ctx := context.Background()
 	res, err := resource.New(ctx,
 		resource.WithFromEnv(),
-		resource.WithProcess(),
+		// resource.WithProcess(),
 		resource.WithTelemetrySDK(),
 		resource.WithHost(),
 		resource.WithAttributes(

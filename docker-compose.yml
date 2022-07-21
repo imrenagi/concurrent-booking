@@ -1,5 +1,37 @@
 version: '3.9'
 services:
+  api:
+    build:
+      context: .
+    command: ["./booking", "server", "--port=9999"]
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: booking
+      DB_PASSWORD: booking
+      DB_NAME: booking
+      ENVIRONMENT: development
+      OTEL_RECEIVER_OTLP_ENDPOINT: otel-collector:4317
+      ASYNQ_REDIS_HOST: redis:6379
+    expose:
+      - "9999"
+    ports:
+      - "9999:9999"
+    restart: always
+  worker:
+    build:
+      context: .
+    command: ["./booking", "worker"]
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: booking
+      DB_PASSWORD: booking
+      DB_NAME: booking
+      ENVIRONMENT: development
+      OTEL_RECEIVER_OTLP_ENDPOINT: otel-collector:4317
+      ASYNQ_REDIS_HOST: redis:6379
+    restart: always
   postgres:
     image: postgres:13-alpine
     command: postgres -c 'max_connections=500'
