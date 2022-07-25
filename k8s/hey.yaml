@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: load-generator
+  namespace: booking
+spec:
+  containers:
+    - name: hey
+      image: williamyeh/hey
+      args:
+        - "-z"
+        - "1m"
+        - "-c"
+        - "2"
+        - "-q"
+        - "2"
+        - "-m"
+        - "POST"
+        - "-d"
+        - '{"show_id": "b9b0d5da-98a4-4b09-b5f5-83dc0c3b9964"}'
+        - "http://booking-service.booking:9999/api/v2/booking"
+  restartPolicy: OnFailure

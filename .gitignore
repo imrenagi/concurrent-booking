@@ -4,3 +4,4 @@
 
 api/.idea/
 hack/observability/secrets/*
+k8s/secret.yaml

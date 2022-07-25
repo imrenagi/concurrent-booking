@@ -58,7 +58,7 @@ service:
 #        - logging
         - jaeger
         - googlecloud
-#        - otlp
+        - otlp
     metrics:
       receivers: [ otlp ]
       processors:
@@ -68,4 +68,4 @@ service:
 #        - logging
         - prometheus
         - googlecloud
-#        - otlp
+        - otlp

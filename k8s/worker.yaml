@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: reservation-worker
+  name: reservation-worker
+  namespace: booking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reservation-worker
+  template:
+    metadata:
+      labels:
+        app: reservation-worker
+    spec:
+      containers:
+        - image: imrenagi/booking:latest
+          args:
+            - ./booking
+            - worker
+          name: booking
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          env:
+            - name: DB_HOST
+              value: "10.35.113.3"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: booking-db-secret
+                  key: username
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: booking-db-secret
+                  key: name
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: booking-db-secret
+                  key: userpassword
+            - name: ENVIRONMENT
+              value: development
+            - name: OTEL_RECEIVER_OTLP_ENDPOINT
+              value: "otel-collector.booking:4317"
+            - name: ASYNQ_REDIS_HOST
+              value: "redis-master.redis:6379"
+---

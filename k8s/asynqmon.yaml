@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: asynqmon
+  name: asynqmon
+  namespace: booking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: asynqmon
+  template:
+    metadata:
+      labels:
+        app: asynqmon
+    spec:
+      containers:
+        - image: hibiken/asynqmon
+          args:
+            - "--redis-addr=redis-master.redis:6379"
+          name: asynqmon
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: asynqmon
+  namespace: booking
+  labels:
+    app: asynqmon
+spec:
+  ports:
+    - name: http
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: asynqmon
+  type: ClusterIP

@@ -1,0 +1,163 @@
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector
+  namespace: booking
+  labels:
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/component: otel-collector
+data:
+  otel-collector-config: |
+    service:
+      telemetry:
+        logs:
+          level: debug
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+
+    exporters:
+      googlecloud:
+        project: io-extended-2022
+        retry_on_failure:
+          enabled: false
+      prometheus:
+        endpoint: "0.0.0.0:8889"
+        const_labels: { }
+      otlp:
+        endpoint: ${OTEL_NEW_RELIC_EXPORTER_OTLP_ENDPOINT}
+        headers:
+          api-key: ${OTEL_NEW_RELIC_EXPORTER_API_KEY}
+      logging:
+
+    processors:
+      batch:
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 65
+        spike_limit_percentage: 60
+      resourcedetection:
+        detectors: [gcp]
+        timeout: 10s
+
+    extensions:
+      health_check:
+      pprof:
+        endpoint: :1888
+      zpages:
+        endpoint: :55679
+
+    service:
+      extensions: [ pprof, zpages, health_check ]
+      pipelines:
+        traces:
+          receivers: [ otlp ]
+          processors:
+          - batch
+          exporters:
+          - logging
+          - googlecloud
+          - otlp
+        metrics:
+          receivers: [ otlp ]
+          processors:
+            - batch
+          exporters:
+            - logging
+            - prometheus
+            - googlecloud
+            - otlp
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: booking
+  labels:
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/component: otel-collector
+spec:
+  ports:
+    - name: otlp # Default endpoint for otlp receiver.
+      port: 4317
+      protocol: TCP
+      targetPort: 4317
+    - name: metrics # Default endpoint for metrics.
+      port: 8889
+      protocol: TCP
+      targetPort: 8889
+    - name: otel-metrics # Default endpoint for metrics.
+      port: 8888
+      protocol: TCP
+      targetPort: 8888
+  selector:
+    app.kubernetes.io/component: otel-collector
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: booking
+  labels:
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/component: otel-collector
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: otel-collector
+      app.kubernetes.io/component: otel-collector
+  minReadySeconds: 5
+  progressDeadlineSeconds: 120
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: otel-collector
+        app.kubernetes.io/component: otel-collector
+    spec:
+      containers:
+        - args: ["--config=/etc/otel/conf/otel-collector-config.yaml", "${OTELCOL_ARGS}"]
+          env:
+#            - name: GOGC
+#              value: "80"
+            - name: OTEL_NEW_RELIC_EXPORTER_OTLP_ENDPOINT
+              value: "https://otlp.nr-data.net:4317"
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /etc/otel/gcp/secret/otel-collector.json
+            - name: OTEL_NEW_RELIC_EXPORTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: otel-collector-newrelic-secret
+                  key: apikey
+          image: otel/opentelemetry-collector-contrib:latest
+          name: otel-collector
+          resources:
+            limits:
+              cpu: 100m
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 200Mi
+          ports:
+            - containerPort: 4317 # Default endpoint for otlp receiver.
+            - containerPort: 8889 # Default endpoint for querying metrics.
+            - containerPort: 8888 # Prometheus metrics exposed by the collector
+          volumeMounts:
+            - name: otel-collector-config-vol
+              mountPath: /etc/otel/conf
+            - name: otel-collector-gcp-secret-vol
+              mountPath: /etc/otel/gcp/secret
+      volumes:
+        - configMap:
+            name: otel-collector
+            items:
+              - key: otel-collector-config
+                path: otel-collector-config.yaml
+          name: otel-collector-config-vol
+        - name: otel-collector-gcp-secret-vol
+          secret:
+            secretName: otel-collector-gcp-secret
