@@ -16,7 +16,7 @@ spec:
         app: booking-service
     spec:
       containers:
-        - image: imrenagi/booking:latest
+        - image: imrenagi/booking:v1
           livenessProbe:
             httpGet:
               path: /healthz

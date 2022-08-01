@@ -9,11 +9,6 @@ metadata:
     app.kubernetes.io/component: otel-collector
 data:
   otel-collector-config: |
-    service:
-      telemetry:
-        logs:
-          level: debug
-
     receivers:
       otlp:
         protocols:
@@ -31,14 +26,15 @@ data:
         endpoint: ${OTEL_NEW_RELIC_EXPORTER_OTLP_ENDPOINT}
         headers:
           api-key: ${OTEL_NEW_RELIC_EXPORTER_API_KEY}
+
       logging:
 
     processors:
       batch:
       memory_limiter:
-        check_interval: 5s
+        check_interval: 1s
         limit_percentage: 65
-        spike_limit_percentage: 60
+        spike_limit_percentage: 50
       resourcedetection:
         detectors: [gcp]
         timeout: 10s
@@ -68,8 +64,6 @@ data:
           exporters:
             - logging
             - prometheus
-            - googlecloud
-            - otlp
 ---
 apiVersion: v1
 kind: Service
@@ -137,11 +131,11 @@ spec:
           name: otel-collector
           resources:
             limits:
-              cpu: 100m
-              memory: 200Mi
+              cpu: 400m
+              memory: 2Gi
             requests:
-              cpu: 100m
-              memory: 200Mi
+              cpu: 200m
+              memory: 1Gi
           ports:
             - containerPort: 4317 # Default endpoint for otlp receiver.
             - containerPort: 8889 # Default endpoint for querying metrics.

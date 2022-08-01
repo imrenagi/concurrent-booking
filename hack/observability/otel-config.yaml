@@ -8,22 +8,13 @@ exporters:
     project: io-extended-2022
     retry_on_failure:
       enabled: false
-#    metric:
-#      create_metric_descriptor_buffer_size: 20
-#    log:
-#      default_log_name: opentelemetry.io/collector-exported-log
-
   prometheus:
     endpoint: "0.0.0.0:8889"
     const_labels: { }
-
-  logging:
-
   jaeger:
     endpoint: jaeger:14250
     tls:
       insecure: true
-
   otlp:
     endpoint: ${OTEL_NEW_RELIC_EXPORTER_OTLP_ENDPOINT}
     headers:
@@ -32,9 +23,9 @@ exporters:
 processors:
   batch:
   memory_limiter:
-    check_interval: 5s
+    check_interval: 1s
     limit_percentage: 65
-    spike_limit_percentage: 60
+    spike_limit_percentage: 50
   resourcedetection:
     detectors: [gcp]
     timeout: 10s
@@ -52,10 +43,8 @@ service:
     traces:
       receivers: [ otlp ]
       processors:
-        - memory_limiter
         - batch
       exporters:
-#        - logging
         - jaeger
         - googlecloud
         - otlp
@@ -65,7 +54,6 @@ service:
         - memory_limiter
         - batch
       exporters:
-#        - logging
         - prometheus
         - googlecloud
         - otlp

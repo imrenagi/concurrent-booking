@@ -73,7 +73,7 @@ WARNING: This setup is not properly documented.
 1. Port forward prometheus dashboard
 
     ```shell
-    kubectl -n gmp-test port-forward svc/frontend 9090
+     kubectl -n gmp-test port-forward svc/frontend 9091:9090
     ```
 
 1. Run load test
@@ -81,3 +81,12 @@ WARNING: This setup is not properly documented.
     ```shell
     k apply -f k8s/hey.yaml
     ```
+   
+
+## Demo Script
+
+```shell
+hey -n 1 -c 1 -q 1  -m POST -d '{"show_id": "b9b0d5da-98a4-4b09-b5f5-83dc0c3b9964"}' http://localhost:9999/api/v1/booking
+
+hey -z 5s -c 100 -m POST -d '{"show_id": "b9b0d5da-98a4-4b09-b5f5-83dc0c3b9964"}' http://localhost:9999/api/v1/booking
+```
